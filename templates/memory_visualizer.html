@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Visualizer</title>
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --background-color: #f5f7fa;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --border-color: #e1e4e8;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --original-color: #34c759;
+            --combined-color: #007aff;
+            --inferred-color: #ff9500;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0 30px;
+        }
+        
+        .header h1 {
+            font-weight: 600;
+            font-size: 28px;
+            color: var(--text-color);
+        }
+        
+        .date-header {
+            background-color: var(--card-color);
+            padding: 12px 16px;
+            margin-top: 24px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        
+        .date-header h2 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .memory-item {
+            background-color: var(--card-color);
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px var(--shadow-color);
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .memory-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+        
+        .memory-item.original {
+            border-left-color: var(--original-color);
+        }
+        
+        .memory-item.combined {
+            border-left-color: var(--combined-color);
+        }
+        
+        .memory-item.inferred {
+            border-left-color: var(--inferred-color);
+        }
+        
+        .memory-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .type-original {
+            background-color: var(--original-color);
+        }
+        
+        .type-combined {
+            background-color: var(--combined-color);
+        }
+        
+        .type-inferred {
+            background-color: var(--inferred-color);
+        }
+        
+        .memory-attribute {
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .memory-citation {
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        
+        .memory-time {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        .has-conversation {
+            cursor: pointer;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .has-conversation:after {
+            content: "👁️";
+            margin-left: 8px;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .has-conversation:hover {
+            color: var(--primary-color);
+        }
+        
+        .has-conversation:hover:after {
+            opacity: 1;
+        }
+        
+        /* Modal styles - macOS inspired */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal.show {
+            opacity: 1;
+        }
+        
+        .modal-content {
+            background-color: var(--card-color);
+            margin: 7% auto;
+            width: 85%;
+            max-width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .modal.show .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .close-modal {
+            color: var(--text-secondary);
+            font-size: 24px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: color 0.2s;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .close-modal:hover {
+            color: var(--text-color);
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Conversation styles */
+        .attribute-header {
+            margin-bottom: 20px;
+        }
+        
+        .attribute-header h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .attribute-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .conversation-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 18px;
+            max-width: 80%;
+            position: relative;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        
+        .message-me {
+            background-color: #e1f5fe;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-other {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-header {
+            font-weight: 500;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 6px;
+        }
+        
+        .conversation-source {
+            margin-top: 24px;
+            padding: 12px 16px;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--combined-color);
+            border-radius: 6px;
+        }
+        
+        .conversation-source h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .tab:hover {
+            color: var(--primary-color);
+        }
+        
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Memory Visualizer</h1>
+        </div>
+        
+        {% for date, memories in grouped_memories.items() %}
+            <div class="date-header">
+                <h2>{{ date }}</h2>
+            </div>
+            
+            {% for memory in memories %}
+                <div class="memory-item {{ memory.type }}">
+                    <div class="memory-type type-{{ memory.type }}">{{ memory.type }}</div>
+                    
+                    {% if memory.has_conversation %}
+                        <div class="memory-attribute has-conversation" onclick="fetchConversation('{{ memory.global_index }}')">
+                            {{ memory.attribute }}
+                        </div>
+                    {% else %}
+                        <div class="memory-attribute">
+                            {{ memory.attribute }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if memory.citation %}
+                        <div class="memory-citation">{{ memory.citation }}</div>
+                    {% endif %}
+                    
+                    {% if memory.timestamp %}
+                        <div class="memory-time">{{ memory.timestamp }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    
+    <!-- Modal for conversation view -->
+    <div id="conversationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Conversation</h2>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get the modal
+        var modal = document.getElementById("conversationModal");
+        var modalContent = document.getElementById("modalContent");
+        
+        // Function to fetch conversation data and display in modal
+        function fetchConversation(attrIndex) {
+            fetch('/conversation/' + attrIndex)
+                .then(response => response.text())
+                .then(data => {
+                    modalContent.innerHTML = data;
+                    modal.style.display = "block";
+                    document.body.style.overflow = "hidden"; // Prevent scrolling behind modal
+                    
+                    // Reset the modal body scroll position to top
+                    modalContent.scrollTop = 0;
+                    
+                    // Add a small delay before adding the show class for the animation
+                    setTimeout(() => {
+                        modal.classList.add("show");
+                    }, 10);
+                })
+                .catch(error => {
+                    console.error('Error fetching conversation:', error);
+                    modalContent.innerHTML = "<p>Error loading conversation data.</p>";
+                    modal.style.display = "block";
+                    
+                    // Reset the modal body scroll position to top
+                    modalContent.scrollTop = 0;
+                    
+                    setTimeout(() => {
+                        modal.classList.add("show");
+                    }, 10);
+                });
+        }
+        
+        // Function to close the modal
+        function closeModal() {
+            modal.classList.remove("show");
+            setTimeout(() => {
+                modal.style.display = "none";
+                document.body.style.overflow = "auto"; // Re-enable scrolling
+            }, 300); // Match the transition duration
+        }
+        
+        // Close the modal if user clicks outside of it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+        
+        // Function to handle tab switching (will be used in modal content)
+        function openTab(evt, tabId) {
+            // Hide all tab content
+            var tabContents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].className = tabContents[i].className.replace(" active", "");
+            }
+
+            // Remove active class from all tabs
+            var tabs = document.getElementsByClassName("tab");
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].className = tabs[i].className.replace(" active", "");
+            }
+
+            // Show the current tab and add active class
+            document.getElementById(tabId).className += " active";
+            evt.currentTarget.className += " active";
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPersona Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        @import url('https://fonts.cdnfonts.com/css/sf-pro-display');
+        
+        body {
+            font-family: 'SF Pro Display', sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+        }
+        
+        .container {
+            max-width: 800px;
+        }
+        
+        .chat-container {
+            height: 60vh;
+            overflow-y: auto;
+            border-radius: 12px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: message-appear 0.3s ease-out;
+            transform-origin: bottom center;
+        }
+        
+        @keyframes message-appear {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .user-message {
+            background-color: #007aff;
+            color: white;
+            margin-left: auto;
+            transform-origin: bottom right;
+        }
+        
+        .assistant-message {
+            background-color: #e9e9eb;
+            color: #1d1d1f;
+            transform-origin: bottom left;
+        }
+        
+        .setup-form {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .chat-input {
+            border-radius: 20px;
+            padding: 10px 15px;
+            border: 1px solid #d2d2d7;
+        }
+        
+        .btn-primary {
+            background-color: #007aff;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0062cc;
+        }
+        
+        .chat-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #888;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing-bubble 1.4s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing-bubble {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-4px);
+            }
+        }
+        
+        .form-check-input:checked {
+            background-color: #007aff;
+            border-color: #007aff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4" id="main-header">IMPersona Chat</h1>
+        
+        <!-- Setup Form -->
+        <div id="setup-container" class="setup-form">
+            <h3 class="mb-3">Chat Setup</h3>
+            <div class="mb-3">
+                <label for="user-name" class="form-label">Your Name</label>
+                <input type="text" class="form-control" id="user-name" placeholder="Enter your name">
+            </div>
+            <div class="mb-3">
+                <label for="model-name" class="form-label">Model Name</label>
+                <input type="text" class="form-control" id="model-name" placeholder="e.g., gpt-4">
+            </div>
+            <div class="mb-3">
+                <label for="inference-args" class="form-label">Custom Model Path (Optional)</label>
+                <input type="text" class="form-control" id="inference-args" placeholder="Path to custom model">
+            </div>
+            <div class="mb-3">
+                <label for="adapter-path" class="form-label">Adapter Path (Optional)</label>
+                <input type="text" class="form-control" id="adapter-path" placeholder="Path to LoRA adapter">
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="use-icl">
+                <label class="form-check-label" for="use-icl">Use Sample Chats (ICL)</label>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="use-memory">
+                <label class="form-check-label" for="use-memory">Use Memory Module</label>
+            </div>
+            <div class="mb-3" id="memory-type-container" style="display: none;">
+                <label for="memory-type" class="form-label">Memory Type</label>
+                <select class="form-control" id="memory-type">
+                    <option value="normal">Normal Memory</option>
+                    <option value="hierarchical">Hierarchical Memory</option>
+                </select>
+            </div>
+            <button id="start-chat" class="btn btn-primary w-100">Start Chat</button>
+        </div>
+        
+        <!-- Chat Interface (initially hidden) -->
+        <div id="chat-interface" style="display: none;">
+            <div class="chat-header">
+                <div class="d-flex align-items-center position-relative mb-3">
+                    <button id="back-button" class="btn btn-secondary btn-sm position-absolute start-0">Back</button>
+                    <h3 id="chat-title" class="w-100 text-center mb-0">Chatting with <span id="persona-name"></span></h3>
+                </div>
+            </div>
+            <div id="chat-container" class="chat-container"></div>
+            <div class="input-group">
+                <input type="text" id="message-input" class="form-control chat-input" placeholder="Type your message...">
+                <button id="send-button" class="btn btn-primary">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        
+        // Load saved values from localStorage when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch default impersonation name from server
+            fetch('/get_default_impersonation_name')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.default_name) {
+                        // Store the default name in localStorage if not already set
+                        if (!localStorage.getItem('impersona-impersonation-name')) {
+                            localStorage.setItem('impersona-impersonation-name', data.default_name);
+                        }
+                        
+                        // Update the header with the impersonation name
+                        const impersonationName = data.default_name;
+                        document.getElementById('main-header').textContent = `IMPersona Chat with ${impersonationName}`;
+                    }
+                })
+                .catch(error => console.error('Error fetching default name:', error));
+            
+            // Restore input values from localStorage
+            document.getElementById('user-name').value = localStorage.getItem('impersona-user-name') || '';
+            document.getElementById('model-name').value = localStorage.getItem('impersona-model-name') || '';
+            document.getElementById('inference-args').value = localStorage.getItem('impersona-inference-args') || '';
+            document.getElementById('adapter-path').value = localStorage.getItem('impersona-adapter-path') || '';
+            
+            // Restore checkbox states
+            document.getElementById('use-icl').checked = localStorage.getItem('impersona-use-icl') === 'true';
+            document.getElementById('use-memory').checked = localStorage.getItem('impersona-use-memory') === 'true';
+            
+            // Restore memory type selection and show/hide the container
+            const memoryTypeSelect = document.getElementById('memory-type');
+            memoryTypeSelect.value = localStorage.getItem('impersona-memory-type') || 'normal';
+            document.getElementById('memory-type-container').style.display = 
+                document.getElementById('use-memory').checked ? 'block' : 'none';
+        });
+        
+        document.getElementById('start-chat').addEventListener('click', function() {
+            const userName = document.getElementById('user-name').value;
+            // Get the impersonation name from the server-provided default
+            const impersonationName = localStorage.getItem('impersona-impersonation-name') || '';
+            const modelName = document.getElementById('model-name').value;
+            const customModelPath = document.getElementById('inference-args').value;
+            const adapterPath = document.getElementById('adapter-path').value;
+            const useIcl = document.getElementById('use-icl').checked;
+            const useMemory = document.getElementById('use-memory').checked;
+            const memoryType = document.getElementById('memory-type').value;
+            
+            // Save values to localStorage
+            localStorage.setItem('impersona-user-name', userName);
+            localStorage.setItem('impersona-impersonation-name', impersonationName);
+            localStorage.setItem('impersona-model-name', modelName);
+            localStorage.setItem('impersona-inference-args', customModelPath);
+            localStorage.setItem('impersona-adapter-path', adapterPath);
+            localStorage.setItem('impersona-use-icl', useIcl);
+            localStorage.setItem('impersona-use-memory', useMemory);
+            localStorage.setItem('impersona-memory-type', memoryType);
+            
+            if (!userName || !modelName) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            // Start a new chat session
+            fetch('/start_chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_name: userName,
+                    impersonation_name: impersonationName,
+                    model_name: modelName,
+                    custom_model_path: customModelPath,
+                    adapter_path: adapterPath,
+                    use_icl: useIcl,
+                    use_memory: useMemory,
+                    memory_type: memoryType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    sessionId = data.session_id;
+                    document.getElementById('setup-container').style.display = 'none';
+                    document.getElementById('chat-interface').style.display = 'block';
+                    document.getElementById('persona-name').textContent = impersonationName;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+        
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Add event listener for the back button
+        document.getElementById('back-button').addEventListener('click', function() {
+            document.getElementById('chat-interface').style.display = 'none';
+            document.getElementById('setup-container').style.display = 'block';
+            document.getElementById('chat-container').innerHTML = '';
+            sessionId = null;
+        });
+        
+        function sendMessage() {
+            if (!sessionId) return;
+            
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessageToChat('user', message);
+            messageInput.value = '';
+            
+            // Show loading indicator
+            const loadingId = addLoadingIndicator();
+            
+            // Send message to server
+            fetch(`/chat/${sessionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove loading indicator
+                removeLoadingIndicator(loadingId);
+                
+                // Add assistant response to chat
+                addMessageToChat('assistant', data.response);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                removeLoadingIndicator(loadingId);
+                addMessageToChat('assistant', 'Sorry, there was an error processing your request.');
+            });
+        }
+        
+        function addMessageToChat(role, content) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.textContent = content;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function addLoadingIndicator() {
+            const chatContainer = document.getElementById('chat-container');
+            const loadingDiv = document.createElement('div');
+            const id = 'loading-' + Date.now();
+            loadingDiv.id = id;
+            loadingDiv.className = 'message assistant-message';
+            
+            // Create typing indicator with three dots
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('span');
+                typingIndicator.appendChild(dot);
+            }
+            
+            loadingDiv.innerHTML = '';
+            loadingDiv.appendChild(typingIndicator);
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return id;
+        }
+        
+        function removeLoadingIndicator(id) {
+            const loadingDiv = document.getElementById(id);
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+        
+        // Add this after your DOMContentLoaded event listener
+        document.getElementById('use-memory').addEventListener('change', function() {
+            document.getElementById('memory-type-container').style.display = 
+                this.checked ? 'block' : 'none';
+        });
+    </script>
+</body>
+</html> 

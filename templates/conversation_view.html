@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversation View</title>
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --background-color: #f5f7fa;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --border-color: #e1e4e8;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --original-color: #34c759;
+            --combined-color: #007aff;
+            --inferred-color: #ff9500;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .attribute-header {
+            margin-bottom: 20px;
+        }
+        
+        .attribute-header h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .attribute-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .conversation-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 18px;
+            max-width: 80%;
+            position: relative;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        
+        .message-me {
+            background-color: #e1f5fe;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-other {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-header {
+            font-weight: 500;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 6px;
+        }
+        
+        .conversation-source {
+            margin-top: 24px;
+            padding: 12px 16px;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--combined-color);
+            border-radius: 6px;
+        }
+        
+        .conversation-source h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .tab:hover {
+            color: var(--primary-color);
+        }
+        
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="attribute-header">
+        <h1>{{ attribute.attribute }}</h1>
+        {% if attribute.timestamp %}
+            <p>Timestamp: {{ attribute.timestamp }}</p>
+        {% endif %}
+    </div>
+
+    {% if multiple_conversations %}
+        <div class="tab-container">
+            {% for i in range(conversations|length) %}
+                <div class="tab {% if i == 0 %}active{% endif %}" onclick="openTab(event, 'conversation-{{ i }}')">
+                    Source {{ i+1 }}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% for i in range(conversations|length) %}
+            <div id="conversation-{{ i }}" class="tab-content {% if i == 0 %}active{% endif %}">
+                <div class="conversation-source">
+                    <h3>Source Attribute: {{ conversations[i].attribute }}</h3>
+                </div>
+                <div class="conversation-container">
+                    {% for message in conversations[i].content %}
+                        {% if "<|msg|>" in message.content %}
+                            {% set split_messages = message.content.split("<|msg|>") %}
+                            {% for split_msg in split_messages %}
+                                <div class="message {% if message.speaker == 'Me' %}message-me{% else %}message-other{% endif %}">
+                                    <div class="message-header">{{ message.speaker }}</div>
+                                    <div class="message-content">{{ split_msg.strip() }}</div>
+                                    <div class="message-time">{{ message.timestamp }}</div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="message {% if message.speaker == 'Me' %}message-me{% else %}message-other{% endif %}">
+                                <div class="message-header">{{ message.speaker }}</div>
+                                <div class="message-content">{{ message.content }}</div>
+                                <div class="message-time">{{ message.timestamp }}</div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="conversation-container">
+            {% for message in conversation %}
+                {% if "<|msg|>" in message.content %}
+                    {% set split_messages = message.content.split("<|msg|>") %}
+                    {% for split_msg in split_messages %}
+                        <div class="message {% if message.speaker == 'Me' %}message-me{% else %}message-other{% endif %}">
+                            <div class="message-header">{{ message.speaker }}</div>
+                            <div class="message-content">{{ split_msg.strip() }}</div>
+                            <div class="message-time">{{ message.timestamp }}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="message {% if message.speaker == 'Me' %}message-me{% else %}message-other{% endif %}">
+                        <div class="message-header">{{ message.speaker }}</div>
+                        <div class="message-content">{{ message.content }}</div>
+                        <div class="message-time">{{ message.timestamp }}</div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <script>
+        function openTab(evt, tabId) {
+            // Hide all tab content
+            var tabContents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].className = tabContents[i].className.replace(" active", "");
+            }
+
+            // Remove active class from all tabs
+            var tabs = document.getElementsByClassName("tab");
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].className = tabs[i].className.replace(" active", "");
+            }
+
+            // Show the current tab and add active class
+            document.getElementById(tabId).className += " active";
+            evt.currentTarget.className += " active";
+        }
+    </script>
+</body>
+</html> 
