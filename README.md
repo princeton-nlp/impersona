@@ -3,6 +3,7 @@
 Website: [https://impersona-website.vercel.app](https://impersona-website.vercel.app)
 
 ## Overview
+![performance_teaser](https://github.com/user-attachments/assets/14e1f72f-9f89-4e3d-b4a0-fd73d4a6cecf)
 
 This repository contains the code to replicate the experiments in the paper "IMPersona: Enabling Individual Impersonation for LLMs" to create custom IMPersonas for LLMs. We support data downloaded from iMessage only currently.
 
